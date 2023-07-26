@@ -10,8 +10,8 @@ class UsersRepository:
     def get_all(self, db: Session, skip: int = 0, limit: int = 10):
         return db.query(User).offset(skip).limit(limit).all()
     
-    def get_by_email(self, db: Session, user_email: str):
-        return db.query(User).filter(User.email == user_email).first()
+    def get_by_phone(self, db: Session, user_phone: str):
+        return db.query(User).filter(User.phone == user_phone).first()
     
     def get_by_id(self, db: Session, user_id: int):
         return db.query(User).filter(User.id == user_id).first()
