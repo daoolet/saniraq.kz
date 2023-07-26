@@ -1,10 +1,14 @@
-
 from pydantic import BaseModel
-from attr import define
+
+class UserInput(BaseModel):
+    email: str
+    password: str
+    name: str
+    city: str
+    phone: str
 
 
-@define
-class UserCreate:
+class UserCreate(BaseModel):
     email: str
     password: str
     name: str

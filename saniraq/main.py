@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from .database import SessionLocal, Base, engine
 
 from .actions import UsersRepository
-from .schemas import UserCreate
+from .schemas import UserCreate, UserInput
 
 
 app = FastAPI()
@@ -34,21 +34,20 @@ def get_signup(db: Session = Depends(get_db)):
     return all_users
 
 @app.post("/auth/users")
-def post_signup(
-    name: str,
-    email: str,
-    password: str,
-    city: str,
-    phone: str,
-    db: Session = Depends(get_db)
-):
+def post_signup(user: UserInput, db: Session = Depends(get_db)):
     
-    user_exists = users_repository.get_by_email(db, user_email=email)
+    user_exists = users_repository.get_by_email(db, user_email=user.email)
 
     if user_exists:
         raise HTTPException(status_code=400, detail="User with this email already exists")
     
-    new_user = UserCreate(email=email, name=name, password=password, city=city, phone=phone)
-    answer = users_repository.save_user(db, user=new_user)
+    new_user = UserCreate(
+        email = user.email,
+        name = user.name,
+        password = user.password,
+        city = user.city,
+        phone = user.phone
+    )
 
-    return answer
+    users_repository.save_user(db, user=new_user)
+    return Response("User is registred", status_code=200)
