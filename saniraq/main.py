@@ -5,8 +5,13 @@ from sqlalchemy.orm import Session
 from jose import jwt
 
 from .database import SessionLocal, Base, engine
-from .actions import UsersRepository
-from .schemas import UserCreate, UserInput, UserUpdate
+from .actions import UsersRepository, AdsRepository
+from .schemas import (
+    UserCreate,
+    UserInput,
+    UserUpdate,
+    AdCreate
+)
 
 
 app = FastAPI()
@@ -14,6 +19,7 @@ Base.metadata.create_all(bind=engine)
 
 
 users_repository = UsersRepository()
+ads_repository = AdsRepository()
 
 
 def get_db():
@@ -123,3 +129,40 @@ def get_user_info(
     current_user_info = users_repository.get_by_id(db, user_id=current_user_id)
 
     return current_user_info
+
+
+# ------------ TASK5 - POST AD ------
+
+@app.post("/shanyraks")
+def post_ad(
+    input_ad: AdCreate,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    current_user_id = decode_jwt_token(token)
+    saved_ad = ads_repository.save_ad(db, input_ad)
+    #   new_ad = AdCreate(
+    #       type = input_ad.type,
+    #       price = input_ad.price,
+    #       adress = input_ad.adress,
+    #       area = input_ad.area,
+    #       rooms_count = input_ad.rooms_count,
+    #       description = input_ad.description
+    # )
+    return {"ad_id": saved_ad.id}
+
+# ------------ TASK6 - GET AD ------
+
+@app.get("/shanyraks/{id}")
+def get_ad(id: int, db: Session = Depends(get_db)):
+    
+    found_ad = ads_repository.get_by_id(db, ad_id=id)
+
+    if not found_ad:
+        raise HTTPException(status_code=404, detail="Not found ad")
+    
+    return found_ad
+
+
+
+    

@@ -1,8 +1,11 @@
-# user repo with methods and etc
 from sqlalchemy.orm import relationship, Session
 
-from .models import User
-from .schemas import UserCreate, UserUpdate
+from .models import User, Ad
+from .schemas import (
+    UserCreate,
+    UserUpdate,
+    AdCreate
+)
 
 
 class UsersRepository:
@@ -32,3 +35,40 @@ class UsersRepository:
         db_user.phone = new_info.phone
         db.commit()
         return True
+    
+
+class AdsRepository:
+
+    def get_all(self, db: Session, skip: int = 0, limit: int = 10):
+        return db.query(Ad).offset(skip).limit(limit).all()
+    
+    def get_by_id(self, db: Session, ad_id: int):
+        return db.query(Ad).filter(Ad.id == ad_id).first()
+
+    def save_ad(self, db: Session, ad: AdCreate):
+        db_ad = Ad(
+            type = ad.type,
+            price = ad.price,
+            adress = ad.adress,
+            area = ad.area,
+            rooms_count = ad.rooms_count,
+            description = ad.description
+        )
+        db.add(db_ad)
+        db.commit()
+        db.refresh(db_ad)
+        return db_ad
+    
+    def update_ad(self, db: Session, ad_id: int, new_info: AdCreate):
+        db_ad = db.query(Ad).filter(Ad.id == ad_id).first()
+        db_ad.type = new_info.type,
+        db_ad.price = new_info.price,
+        db_ad.adress = new_info.adress,
+        db_ad.area = new_info.area,
+        db_ad.rooms_count = new_info.rooms_count,
+        db_ad.description = new_info.description
+        db.commit()
+        return True
+    
+    def delete_ad(self, db: Session, user_id: int, new_info: UserUpdate):
+        pass
