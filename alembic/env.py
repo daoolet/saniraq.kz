@@ -6,7 +6,7 @@ from sqlalchemy import pool
 from alembic import context
 
 from saniraq.database import Base
-from saniraq.models import User
+from saniraq.models import User, Ad
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
