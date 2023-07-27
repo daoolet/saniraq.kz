@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Float, Integer, String
+from sqlalchemy import Column, Float, Integer, String, ForeignKey
+from sqlalchemy.orm import relationship
 
 from .database import Base
 
@@ -12,6 +13,8 @@ class User(Base):
     city = Column(String)
     phone = Column(String)
 
+    ad = relationship("Ad", back_populates="ad_owner")
+
 class Ad(Base):
     __tablename__ = "ads"
 
@@ -20,5 +23,8 @@ class Ad(Base):
     price = Column(Float)  
     adress = Column(String) 
     area = Column(Float)  
-    rooms_count = Column(Float) 
-    description = Column(String) 
+    rooms_count = Column(Integer) 
+    description = Column(String)
+
+    user_id = Column(Integer, ForeignKey("users.id"))
+    ad_owner = relationship("User", back_populates="ad")
