@@ -140,15 +140,8 @@ def post_ad(
     token: str = Depends(oauth2_scheme)
 ):
     current_user_id = decode_jwt_token(token)
-    saved_ad = ads_repository.save_ad(db, input_ad)
-    #   new_ad = AdCreate(
-    #       type = input_ad.type,
-    #       price = input_ad.price,
-    #       adress = input_ad.adress,
-    #       area = input_ad.area,
-    #       rooms_count = input_ad.rooms_count,
-    #       description = input_ad.description
-    # )
+    saved_ad = ads_repository.save_ad(db, ad=input_ad, user_id=current_user_id)
+    
     return {"ad_id": saved_ad.id}
 
 # ------------ TASK6 - GET AD ------
@@ -164,5 +157,53 @@ def get_ad(id: int, db: Session = Depends(get_db)):
     return found_ad
 
 
+# ------------ TASK7 - UPDATE AD ------
 
+@app.patch("/shanyraks/{id}")
+def patch_update_ad(
+        id: int,
+        new_info: AdCreate,
+        db: Session = Depends(get_db),
+        token: str = Depends(oauth2_scheme)
+):
+    current_user_id = decode_jwt_token(token)
+    found_ad = ads_repository.get_by_id(db, ad_id=id)
+
+    if not found_ad:
+        raise HTTPException(status_code=404, detail="Not found ad")
     
+    new_ad = AdCreate(
+        type = new_info.type,
+        price = new_info.price,
+        adress = new_info.adress,
+        area = new_info.area,
+        rooms_count = new_info.rooms_count,
+        description = new_info.description
+    )
+
+    ads_repository.update_ad(db, ad_id=found_ad.id, new_info=new_ad)
+    return Response("Updated - OK", status_code=200)
+
+
+# ------------ TASK8 - DELETE AD ------
+
+@app.delete("/shanyraks/{id}")
+def delete_ad(
+    id: int,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    current_user_id = decode_jwt_token(token)
+    found_ad = ads_repository.get_by_id(db, ad_id=id)
+
+    if not found_ad:
+        raise HTTPException(status_code=404, detail="Not found ad")
+    
+    deleted_ad = ads_repository.delete_ad(db, ad_id=found_ad.id)
+
+    if not deleted_ad:
+        raise HTTPException(status_code=400, detail="Deletion did not happen")
+    
+    return Response(status_code=200)
+
+

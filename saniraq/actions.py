@@ -45,14 +45,15 @@ class AdsRepository:
     def get_by_id(self, db: Session, ad_id: int):
         return db.query(Ad).filter(Ad.id == ad_id).first()
 
-    def save_ad(self, db: Session, ad: AdCreate):
+    def save_ad(self, db: Session, ad: AdCreate, user_id: int):
         db_ad = Ad(
             type = ad.type,
             price = ad.price,
             adress = ad.adress,
             area = ad.area,
             rooms_count = ad.rooms_count,
-            description = ad.description
+            description = ad.description,
+            user_id = user_id
         )
         db.add(db_ad)
         db.commit()
@@ -61,14 +62,17 @@ class AdsRepository:
     
     def update_ad(self, db: Session, ad_id: int, new_info: AdCreate):
         db_ad = db.query(Ad).filter(Ad.id == ad_id).first()
-        db_ad.type = new_info.type,
-        db_ad.price = new_info.price,
-        db_ad.adress = new_info.adress,
-        db_ad.area = new_info.area,
-        db_ad.rooms_count = new_info.rooms_count,
+        db_ad.type = new_info.type
+        db_ad.price = new_info.price
+        db_ad.adress = new_info.adress
+        db_ad.area = new_info.area
+        db_ad.rooms_count = new_info.rooms_count
         db_ad.description = new_info.description
         db.commit()
         return True
     
-    def delete_ad(self, db: Session, user_id: int, new_info: UserUpdate):
-        pass
+    def delete_ad(self, db: Session, ad_id: int):
+        db_ad = db.query(Ad).filter(Ad.id == ad_id).first()
+        db.delete(db_ad)
+        db.commit()
+        return True

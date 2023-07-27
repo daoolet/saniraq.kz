@@ -25,5 +25,5 @@ class AdCreate(BaseModel):
     price: float
     adress: str
     area: float
-    rooms_count: float
+    rooms_count: int
     description: str
