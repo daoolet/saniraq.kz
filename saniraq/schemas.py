@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 class UserInput(BaseModel):
-    email: str
+    username: str
     password: str
     name: str
     city: str
@@ -9,8 +9,13 @@ class UserInput(BaseModel):
 
 
 class UserCreate(BaseModel):
-    email: str
+    username: str
     password: str
+    name: str
+    city: str
+    phone: str
+
+class UserUpdate(BaseModel):
     name: str
     city: str
     phone: str
