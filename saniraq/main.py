@@ -110,4 +110,16 @@ def patch_update_user(
         raise HTTPException(status_code = 400, detail="Update did not happen")
     
     return Response("Updated - OK", status_code = 200)
-    
+
+
+# ------------ TASK4 - GET ------
+
+@app.get("/auth/users/me")
+def get_user_info(
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    current_user_id = decode_jwt_token(token)
+    current_user_info = users_repository.get_by_id(db, user_id=current_user_id)
+
+    return current_user_info
