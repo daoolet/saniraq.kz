@@ -73,11 +73,14 @@ class CommentsRepository:
     def get_all(self, db: Session, skip: int = 0, limit: int = 10):
         return db.query(Comment).offset(skip).limit(limit).all()
     
+    def get_all_by_ad_id(self, db: Session, ad_id: int):
+        return db.query(Comment).filter(Comment.ad_id == ad_id).all()
+    
     def get_by_id(self, db: Session, comment_id: int):
         return db.query(Comment).filter(Comment.id == comment_id).first()
     
-    def save_comment(self, db: Session, comment: CommentCreate, user_id: int):
-        db_comment = Comment(**comment.model_dump(), author_id = user_id)
+    def save_comment(self, db: Session, comment: CommentCreate, user_id: int, ad_id: int):
+        db_comment = Comment(**comment.model_dump(), author_id = user_id, ad_id = ad_id)
         db.add(db_comment)
         db.commit()
         db.refresh(db_comment)

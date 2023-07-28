@@ -197,8 +197,23 @@ def post_comments(
     if not current_ad:
         raise HTTPException(status_code=404, detail="Not found ad")
 
-    comments_repository.save_comment(db=db, comment=new_comment, user_id=current_user_id)
+    comments_repository.save_comment(db=db, comment=new_comment, user_id=current_user_id, ad_id=current_ad.id)
 
     return Response("Comment created - OK", status_code=200)
 
 
+# ------------ TASK10 - GET COMMENTS ------
+
+@app.get("/shanyraks/{id}/comments")
+def get_comments(
+    id: int,
+    db: Session = Depends(get_db)
+):
+    current_ad = ads_repository.get_by_id(db=db, ad_id=id)
+
+    if not current_ad:
+            raise HTTPException(status_code=404, detail="Not found ad")
+    
+    all_comment_by_ad_id = comments_repository.get_all_by_ad_id(db=db, ad_id=current_ad.id)
+
+    return {"comments": all_comment_by_ad_id}

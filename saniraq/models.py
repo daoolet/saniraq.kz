@@ -36,5 +36,6 @@ class Comment(Base):
     content = Column(String)
     created_at = Column(DateTime)
 
+    ad_id = Column(Integer, ForeignKey("ads.id"))
     author_id = Column(Integer, ForeignKey("users.id"))
     
