@@ -1,5 +1,4 @@
 from fastapi import FastAPI, HTTPException, Depends, Response, Form
-from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from jose import jwt
@@ -8,19 +7,16 @@ from .database import SessionLocal, Base, engine
 from .actions import UsersRepository, AdsRepository
 from .schemas import (
     UserCreate,
-    UserInput,
     UserUpdate,
     AdCreate
 )
 
 
 app = FastAPI()
-Base.metadata.create_all(bind=engine)
-
-
 users_repository = UsersRepository()
 ads_repository = AdsRepository()
 
+Base.metadata.create_all(bind=engine)
 
 def get_db():
     db = SessionLocal()
@@ -42,22 +38,16 @@ def get_signup(db: Session = Depends(get_db)):
     return all_users
 
 @app.post("/auth/users")
-def post_signup(user: UserInput, db: Session = Depends(get_db)):
-    
-    user_exists = users_repository.get_by_username(db, user.username)
+def post_signup(
+    new_user: UserCreate,
+    db: Session = Depends(get_db)
+):
+    user_exists = users_repository.get_by_username(db=db, user_username=new_user.username)
 
     if user_exists:
         raise HTTPException(status_code=400, detail="User with this username already exists")
     
-    new_user = UserCreate(
-        username = user.username,
-        name = user.name,
-        password = user.password,
-        city = user.city,
-        phone = user.phone
-    )
-
-    users_repository.save_user(db, user=new_user)
+    users_repository.save_user(db=db, user=new_user)
     return Response("User is registred", status_code=200)
 
 
@@ -80,7 +70,7 @@ def post_login(
         return HTTPException(status_code=404, detail="User does not exists with this phone number")
     
     if user_exists.password != password:
-        return Response("Passwords dont match")
+        return HTTPException(status_code=400, detail="Password dont match")
     
     token = create_jwt_token(user_exists.id)
     return {"access_token": token}
@@ -96,26 +86,17 @@ def decode_jwt_token(token: str) -> int:
 
 @app.patch("/auth/users/me")
 def patch_update_user(
-    phone: str,
-    name: str,
-    city: str,
+    user_update: UserUpdate,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
     current_user_id = decode_jwt_token(token)
-    
-    new_info = UserUpdate(
-        name = name,
-        phone = phone,
-        city = city
-    )
-
-    updated_user = users_repository.update_user(db, user_id=current_user_id, new_info=new_info)
+    updated_user = users_repository.update_user(db, user_id=current_user_id, new_info=user_update)
     
     if not updated_user:
-        raise HTTPException(status_code = 400, detail="Update did not happen")
+        raise HTTPException(status_code=400, detail="Update did not happen")
     
-    return Response("Updated - OK", status_code = 200)
+    return Response("Updated - OK", status_code=200)
 
 
 # ------------ TASK4 - GET ------
@@ -126,7 +107,7 @@ def get_user_info(
     token: str = Depends(oauth2_scheme)
 ):
     current_user_id = decode_jwt_token(token)
-    current_user_info = users_repository.get_by_id(db, user_id=current_user_id)
+    current_user_info = users_repository.get_by_id(db=db, user_id=current_user_id)
 
     return current_user_info
 
@@ -140,7 +121,7 @@ def post_ad(
     token: str = Depends(oauth2_scheme)
 ):
     current_user_id = decode_jwt_token(token)
-    saved_ad = ads_repository.save_ad(db, ad=input_ad, user_id=current_user_id)
+    saved_ad = ads_repository.save_ad(db=db, ad=input_ad, user_id=current_user_id)
     
     return {"ad_id": saved_ad.id}
 
@@ -149,7 +130,7 @@ def post_ad(
 @app.get("/shanyraks/{id}")
 def get_ad(id: int, db: Session = Depends(get_db)):
     
-    found_ad = ads_repository.get_by_id(db, ad_id=id)
+    found_ad = ads_repository.get_by_id(db=db, ad_id=id)
 
     if not found_ad:
         raise HTTPException(status_code=404, detail="Not found ad")
@@ -162,26 +143,18 @@ def get_ad(id: int, db: Session = Depends(get_db)):
 @app.patch("/shanyraks/{id}")
 def patch_update_ad(
         id: int,
-        new_info: AdCreate,
+        ad_update: AdCreate,
         db: Session = Depends(get_db),
         token: str = Depends(oauth2_scheme)
 ):
     current_user_id = decode_jwt_token(token)
-    found_ad = ads_repository.get_by_id(db, ad_id=id)
+    found_ad = ads_repository.get_by_id(db=db, ad_id=id)
 
     if not found_ad:
         raise HTTPException(status_code=404, detail="Not found ad")
     
-    new_ad = AdCreate(
-        type = new_info.type,
-        price = new_info.price,
-        adress = new_info.adress,
-        area = new_info.area,
-        rooms_count = new_info.rooms_count,
-        description = new_info.description
-    )
+    ads_repository.update_ad(db=db, ad_id=found_ad.id, new_info=ad_update)
 
-    ads_repository.update_ad(db, ad_id=found_ad.id, new_info=new_ad)
     return Response("Updated - OK", status_code=200)
 
 
@@ -199,11 +172,17 @@ def delete_ad(
     if not found_ad:
         raise HTTPException(status_code=404, detail="Not found ad")
     
-    deleted_ad = ads_repository.delete_ad(db, ad_id=found_ad.id)
+    deleted_ad = ads_repository.delete_ad(db=db, ad_id=found_ad.id)
 
     if not deleted_ad:
         raise HTTPException(status_code=400, detail="Deletion did not happen")
     
-    return Response(status_code=200)
+    return Response("Deleted - OK", status_code=200)
+
+
+# ------------ TASK9 - ADD COMMENT ------
+
+
+
 
 

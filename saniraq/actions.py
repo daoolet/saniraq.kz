@@ -20,7 +20,7 @@ class UsersRepository:
         return db.query(User).filter(User.id == user_id).first()
 
     def save_user(self, db: Session, user: UserCreate):
-        db_user = User(username=user.username, name=user.name, password=user.password, city=user.city, phone=user.phone)
+        db_user = User(**user.model_dump())
         db.add(db_user)
         db.commit()
         db.refresh(db_user)
@@ -29,8 +29,6 @@ class UsersRepository:
     def update_user(self, db: Session, user_id: int, new_info: UserUpdate):
         db_user = db.query(User).filter(User.id == user_id).first()
         db_user.name = new_info.name
-        # db_user.username = new_info.username
-        # db_user.password = new_info.password
         db_user.city = new_info.city
         db_user.phone = new_info.phone
         db.commit()
@@ -46,15 +44,7 @@ class AdsRepository:
         return db.query(Ad).filter(Ad.id == ad_id).first()
 
     def save_ad(self, db: Session, ad: AdCreate, user_id: int):
-        db_ad = Ad(
-            type = ad.type,
-            price = ad.price,
-            adress = ad.adress,
-            area = ad.area,
-            rooms_count = ad.rooms_count,
-            description = ad.description,
-            user_id = user_id
-        )
+        db_ad = Ad(**ad.model_dump(), user_id=user_id)
         db.add(db_ad)
         db.commit()
         db.refresh(db_ad)
