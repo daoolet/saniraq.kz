@@ -1,10 +1,11 @@
-from sqlalchemy.orm import relationship, Session
+from sqlalchemy.orm import Session
 
-from .models import User, Ad
+from .models import User, Ad, Comment
 from .schemas import (
     UserCreate,
     UserUpdate,
-    AdCreate
+    AdCreate,
+    CommentCreate
 )
 
 
@@ -66,3 +67,18 @@ class AdsRepository:
         db.delete(db_ad)
         db.commit()
         return True
+    
+class CommentsRepository:
+
+    def get_all(self, db: Session, skip: int = 0, limit: int = 10):
+        return db.query(Comment).offset(skip).limit(limit).all()
+    
+    def get_by_id(self, db: Session, comment_id: int):
+        return db.query(Comment).filter(Comment.id == comment_id).first()
+    
+    def save_comment(self, db: Session, comment: CommentCreate, user_id: int):
+        db_comment = Comment(**comment.model_dump(), author_id = user_id)
+        db.add(db_comment)
+        db.commit()
+        db.refresh(db_comment)
+        return db_comment
