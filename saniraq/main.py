@@ -240,3 +240,24 @@ def patch_update_comments(
     comments_repository.update_comment(db=db, comment_id=current_comment.id, new_info=new_info)
 
     return Response("Updated - OK", status_code=200)
+
+
+# ------------ TASK12 - DELETE COMMENTS ------
+
+@app.delete("/shanyraks/{id}/comments/{comment_id}")
+def delete_comment(
+    id: int,
+    comment_id: int,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    current_user_id = decode_jwt_token(token)
+    current_ad = ads_repository.get_by_id(db=db, ad_id=id)
+    current_comment = comments_repository.get_by_id(db=db, comment_id=comment_id)
+
+    if not current_ad or not current_comment:
+        raise HTTPException(status_code=404, detail="Not found")
+    
+    comments_repository.delete_comment(db=db, comment_id=current_comment.id)
+
+    return Response("Deleted - OK", status_code=200)

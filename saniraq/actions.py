@@ -92,3 +92,9 @@ class CommentsRepository:
         db_comment.content = new_info.content
         db.commit()
         return True
+    
+    def delete_comment(self, db: Session, comment_id: int):
+        db_comment = db.query(Comment).filter(Comment.id == comment_id).first()
+        db.delete(db_comment)
+        db.commit()
+        return True
