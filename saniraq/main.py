@@ -133,12 +133,17 @@ def post_ad(
 @app.get("/shanyraks/{id}")
 def get_ad(id: int, db: Session = Depends(get_db)):
     
-    found_ad = ads_repository.get_by_id(db=db, ad_id=id)
+    current_ad = ads_repository.get_by_id(db=db, ad_id=id)
 
-    if not found_ad:
+    if not current_ad:
         raise HTTPException(status_code=404, detail="Not found ad")
     
-    return found_ad
+    total_comments = comments_repository.get_all_by_ad_id(db=db, ad_id=current_ad.id)
+    
+    return {
+        "current_ad": current_ad,
+        "total_comments": len(total_comments)
+    }
 
 
 # ------------ TASK7 - UPDATE AD ------
