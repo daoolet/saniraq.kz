@@ -5,7 +5,8 @@ from .schemas import (
     UserCreate,
     UserUpdate,
     AdCreate,
-    CommentCreate
+    CommentCreate,
+    CommentUpdate
 )
 
 
@@ -85,3 +86,9 @@ class CommentsRepository:
         db.commit()
         db.refresh(db_comment)
         return db_comment
+    
+    def update_comment(self, db: Session, comment_id: int, new_info: CommentUpdate):
+        db_comment = db.query(Comment).filter(Comment.id == comment_id).first()
+        db_comment.content = new_info.content
+        db.commit()
+        return True

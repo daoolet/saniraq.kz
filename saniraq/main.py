@@ -9,7 +9,8 @@ from .schemas import (
     UserCreate,
     UserUpdate,
     AdCreate,
-    CommentCreate
+    CommentCreate,
+    CommentUpdate
 )
 
 
@@ -217,3 +218,25 @@ def get_comments(
     all_comment_by_ad_id = comments_repository.get_all_by_ad_id(db=db, ad_id=current_ad.id)
 
     return {"comments": all_comment_by_ad_id}
+
+
+# ------------ TASK11 - UPDATE COMMENTS ------
+
+@app.patch("/shanyraks/{id}/comments/{comment_id}")
+def patch_update_comments(
+    id: int,
+    comment_id: int,
+    new_info: CommentUpdate,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    current_user_id = decode_jwt_token(token)
+    current_ad = ads_repository.get_by_id(db=db, ad_id=id)
+    current_comment = comments_repository.get_by_id(db=db, comment_id=comment_id)
+
+    if not current_ad or not current_comment:
+        raise HTTPException(status_code=404, detail="Not found")
+    
+    comments_repository.update_comment(db=db, comment_id=current_comment.id, new_info=new_info)
+
+    return Response("Updated - OK", status_code=200)

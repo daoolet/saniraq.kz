@@ -24,3 +24,6 @@ class AdCreate(BaseModel):
 class CommentCreate(BaseModel):
     content: str
     created_at: datetime
+
+class CommentUpdate(BaseModel):
+    content: str
