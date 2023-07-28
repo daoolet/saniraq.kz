@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Float, Integer, String, ForeignKey
+from sqlalchemy import Column, Float, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -28,3 +28,13 @@ class Ad(Base):
 
     user_id = Column(Integer, ForeignKey("users.id"))
     ad_owner = relationship("User", back_populates="ad")
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    content = Column(String)
+    created_at = Column(DateTime)
+
+    author_id = Column(Integer, ForeignKey("users.id"))
+    

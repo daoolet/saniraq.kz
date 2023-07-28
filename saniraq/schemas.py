@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-
+from datetime import datetime
 
 class UserCreate(BaseModel):
     username: str
@@ -20,3 +20,7 @@ class AdCreate(BaseModel):
     area: float
     rooms_count: int
     description: str
+
+class CommentCreate(BaseModel):
+    content: str
+    created_at: datetime

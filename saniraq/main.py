@@ -4,17 +4,19 @@ from sqlalchemy.orm import Session
 from jose import jwt
 
 from .database import SessionLocal, Base, engine
-from .actions import UsersRepository, AdsRepository
+from .actions import UsersRepository, AdsRepository, CommentsRepository
 from .schemas import (
     UserCreate,
     UserUpdate,
-    AdCreate
+    AdCreate,
+    CommentCreate
 )
 
 
 app = FastAPI()
 users_repository = UsersRepository()
 ads_repository = AdsRepository()
+comments_repository = CommentsRepository()
 
 Base.metadata.create_all(bind=engine)
 
@@ -182,7 +184,21 @@ def delete_ad(
 
 # ------------ TASK9 - ADD COMMENT ------
 
+@app.post("/shanyraks/{id}/comments")
+def post_comments(
+    id: int,
+    new_comment: CommentCreate,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    current_ad = ads_repository.get_by_id(db=db, ad_id=id)
+    current_user_id = decode_jwt_token(token)
 
+    if not current_ad:
+        raise HTTPException(status_code=404, detail="Not found ad")
 
+    comments_repository.save_comment(db=db, comment=new_comment, user_id=current_user_id)
+
+    return Response("Comment created - OK", status_code=200)
 
 
