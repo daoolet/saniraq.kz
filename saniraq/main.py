@@ -140,7 +140,7 @@ def get_ad(id: int, db: Session = Depends(get_db)):
     
     current_ad = ads_repository.get_by_id(db=db, ad_id=id)
 
-    if not current_ad:
+    if not current_ad:  
         raise HTTPException(status_code=404, detail="Not found ad")
     
     total_comments = comments_repository.get_all_by_ad_id(db=db, ad_id=current_ad.id)
@@ -151,25 +151,33 @@ def get_ad(id: int, db: Session = Depends(get_db)):
     }
 
 
-# ------------ TASK7 - UPDATE AD ------
+# ------------ TASK7 - UPDATE AD ------ + TASK2
 
 @app.patch("/shanyraks/{id}")
 def patch_update_ad(
-        id: int,
-        ad_update: AdCreate,
-        db: Session = Depends(get_db),
-        current_user_id: int = Depends(verify_token)
+    id: int,
+    ad_update: AdCreate,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(verify_token)
 ):
-    found_ad = ads_repository.get_by_id(db=db, ad_id=id)
+    current_ad = ads_repository.get_by_id(db=db, ad_id=id)
 
-    if not found_ad:
+    if not current_ad:
         raise HTTPException(status_code=404, detail="Not found ad")
     
-    ads_repository.update_ad(db=db, ad_id=found_ad.id, new_info=ad_update)
+    current_ad_owner_id = current_ad.user_id
+
+    if current_ad_owner_id != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to delete other users' comments"
+        )
+    
+    ads_repository.update_ad(db=db, ad_id=current_ad.id, new_info=ad_update)
     return Response("Updated - OK", status_code=200)
 
 
-# ------------ TASK8 - DELETE AD ------
+# ------------ TASK8 - DELETE AD ------ +TASK2
 
 @app.delete("/shanyraks/{id}")
 def delete_ad(
@@ -177,12 +185,20 @@ def delete_ad(
     db: Session = Depends(get_db),
     current_user_id: int = Depends(verify_token)
 ):
-    found_ad = ads_repository.get_by_id(db, ad_id=id)
+    current_ad = ads_repository.get_by_id(db, ad_id=id)
 
-    if not found_ad:
+    if not current_ad:
         raise HTTPException(status_code=404, detail="Not found ad")
     
-    deleted_ad = ads_repository.delete_ad(db=db, ad_id=found_ad.id)
+    current_ad_owner_id = current_ad.user_id
+
+    if current_ad_owner_id != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to delete other users' comments"
+        )
+
+    deleted_ad = ads_repository.delete_ad(db=db, ad_id=current_ad.id)
 
     if not deleted_ad:
         raise HTTPException(status_code=400, detail="Deletion did not happen")
