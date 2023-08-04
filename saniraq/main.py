@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 
 from .database import SessionLocal, Base, engine
-from .actions import UsersRepository, AdsRepository, CommentsRepository
+from .actions import UsersRepository, AdsRepository, CommentsRepository, FavAdsRepository
 from .schemas import (
     UserCreate,
     UserUpdate,
@@ -19,6 +19,7 @@ app = FastAPI()
 users_repository = UsersRepository()
 ads_repository = AdsRepository()
 comments_repository = CommentsRepository()
+favs_repository = FavAdsRepository()
 
 Base.metadata.create_all(bind=engine)
 
@@ -294,3 +295,18 @@ def delete_comment(
     
     comments_repository.delete_comment(db=db, comment_id=current_comment.id)
     return Response("Deleted - OK", status_code=200)
+
+@app.post("/auth/users/favorites/shanyraks/{id}")
+def post_favorite_ads(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(verify_token)
+):
+    current_ad = ads_repository.get_by_id(db=db, ad_id=id)
+    if not current_ad:
+        raise HTTPException(status_code=404, detail="Not found ad")
+    
+    favs_repository.save_ad(db=db, ad_id=current_ad.id, fav_adress=current_ad.adress)
+    return Response("Saved fav ad - OK", status_code=200)
+    
+

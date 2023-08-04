@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from .models import User, Ad, Comment
+from .models import User, Ad, Comment, FavAd
 from .schemas import (
     UserCreate,
     UserUpdate,
@@ -96,5 +96,26 @@ class CommentsRepository:
     def delete_comment(self, db: Session, comment_id: int):
         db_comment = db.query(Comment).filter(Comment.id == comment_id).first()
         db.delete(db_comment)
+        db.commit()
+        return True
+    
+class FavAdsRepository:
+
+    def get_all(self, db: Session, skip: int = 0, limit: int = 10):
+        return db.query(FavAd).offset(skip).limit(limit).all()
+    
+    def get_by_id(self, db: Session, fav_ad_id: int):
+        return db.query(FavAd).filter(FavAd.id == fav_ad_id).first()
+
+    def save_ad(self, db: Session, ad_id: int, fav_adress: str):
+        db_fav_ad = FavAd(ad_id = ad_id, fav_adress = fav_adress)
+        db.add(db_fav_ad)
+        db.commit()
+        db.refresh(db_fav_ad)
+        return db_fav_ad
+    
+    def delete_ad(self, db: Session, fav_ad_id: int):
+        db_fav_ad = db.query(FavAd).filter(FavAd.id == fav_ad_id).first()
+        db.delete(db_fav_ad)
         db.commit()
         return True
