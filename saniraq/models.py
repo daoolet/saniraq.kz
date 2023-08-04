@@ -38,4 +38,10 @@ class Comment(Base):
 
     ad_id = Column(Integer, ForeignKey("ads.id"))
     author_id = Column(Integer, ForeignKey("users.id"))
-    
+
+class FavAd(Base):
+    __tablename__ = "favorites"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ad_id = Column(Integer, ForeignKey("ads.id"))
+    fav_adress = Column(String)
