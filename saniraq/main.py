@@ -296,6 +296,9 @@ def delete_comment(
     comments_repository.delete_comment(db=db, comment_id=current_comment.id)
     return Response("Deleted - OK", status_code=200)
 
+
+# ------------ PROJ3 - TASK4 ADD FAV ADS ------
+
 @app.post("/auth/users/favorites/shanyraks/{id}")
 def post_favorite_ads(
     id: int,
@@ -308,5 +311,31 @@ def post_favorite_ads(
     
     favs_repository.save_ad(db=db, ad_id=current_ad.id, fav_adress=current_ad.adress)
     return Response("Saved fav ad - OK", status_code=200)
-    
 
+
+# ------------ PROJ3 - TASK5 GET FAV ADS ------
+
+@app.get("/auth/users/favorites/shanyraks")
+def get_favs(
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(verify_token)
+):
+    shanyraks = favs_repository.get_all(db=db)
+    return {"shanyraks": shanyraks}
+
+
+# ------------ PROJ3 - TASK6 DELETE FAV ADS ------
+
+@app.delete("/auth/users/favorites/shanyraks/{id}")
+def delete_fav_ad(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(verify_token)
+):
+    current_fav_ad = favs_repository.get_by_id(db=db, fav_ad_id=id)
+
+    if not current_fav_ad:
+        raise HTTPException(status_code=400, detail="Not found fav ad")
+    
+    favs_repository.delete_ad(db=db, fav_ad_id=current_fav_ad.id)
+    return Response("Deleted fav ad - OK", status_code=200)
