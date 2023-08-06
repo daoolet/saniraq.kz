@@ -339,3 +339,31 @@ def delete_fav_ad(
     
     favs_repository.delete_ad(db=db, fav_ad_id=current_fav_ad.id)
     return Response("Deleted fav ad - OK", status_code=200)
+
+
+# ------------ PROJ3 - TASK7 SEARCHING AND PAGINATION ------
+
+@app.get("/shanyraks")
+def get(
+    limit: int,
+    offset: int,
+    type: str = "",
+    rooms_count: int = None,
+    price_from: float = None,
+    price_until: float = None,
+    db: Session = Depends(get_db)
+):
+    total_data, filtered_data = ads_repository.search(
+        db=db,
+        limit=limit,
+        offset=offset,
+        type=type,
+        rooms_count=rooms_count,
+        price_from=price_from,
+        price_until=price_until
+    )
+
+    return {
+            "total": len(total_data),
+            "objects": filtered_data[::-1]
+    }

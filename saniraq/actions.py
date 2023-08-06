@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import or_, and_
 
 from .models import User, Ad, Comment, FavAd
 from .schemas import (
@@ -68,6 +69,35 @@ class AdsRepository:
         db.delete(db_ad)
         db.commit()
         return True
+    
+    def search(
+            self,
+            db: Session,
+            limit: int,
+            offset: int,
+            type: str,
+            rooms_count: int,
+            price_from: float,
+            price_until: float,
+        ):
+            query = db.query(Ad)
+
+            if type:
+                query = query.filter(Ad.type == type)
+
+            if rooms_count:
+                query = query.filter(Ad.rooms_count == rooms_count)
+
+            if price_from:
+                query = query.filter(Ad.price >= price_from)
+
+            if price_until:
+                query = query.filter(Ad.price <= price_until)
+
+            before_filter_data = query.all()
+            after_filter_data = query.offset(offset).limit(limit).all()
+
+            return before_filter_data, after_filter_data
     
 class CommentsRepository:
 
