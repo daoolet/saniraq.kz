@@ -1,10 +1,11 @@
-from fastapi import FastAPI, HTTPException, Depends, Response, Form
+from fastapi import FastAPI, HTTPException, Depends, Response, Form, status
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-from jose import jwt
+from jose import JWTError, jwt
 
 from .database import SessionLocal, Base, engine
-from .actions import UsersRepository, AdsRepository, CommentsRepository
+from .actions import UsersRepository, AdsRepository, CommentsRepository, FavAdsRepository
 from .schemas import (
     UserCreate,
     UserUpdate,
@@ -18,6 +19,7 @@ app = FastAPI()
 users_repository = UsersRepository()
 ads_repository = AdsRepository()
 comments_repository = CommentsRepository()
+favs_repository = FavAdsRepository()
 
 Base.metadata.create_all(bind=engine)
 
@@ -83,17 +85,24 @@ def post_login(
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/users/login")
 
-def decode_jwt_token(token: str) -> int:
-    data = jwt.decode(token, "kek", "HS256")
-    return data["user_id"]
+def verify_token(token: str = Depends(oauth2_scheme)):
+    try:
+        data = jwt.decode(token, "kek", "HS256")
+        return data["user_id"]
+    except jwt.InvalidTokenError:
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"message": "Invalid or expired token"},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 @app.patch("/auth/users/me")
 def patch_update_user(
     user_update: UserUpdate,
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user_id = Depends(verify_token)
 ):
-    current_user_id = decode_jwt_token(token)
+    
     updated_user = users_repository.update_user(db, user_id=current_user_id, new_info=user_update)
     
     if not updated_user:
@@ -107,9 +116,8 @@ def patch_update_user(
 @app.get("/auth/users/me")
 def get_user_info(
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user_id: int = Depends(verify_token)
 ):
-    current_user_id = decode_jwt_token(token)
     current_user_info = users_repository.get_by_id(db=db, user_id=current_user_id)
 
     return current_user_info
@@ -121,11 +129,9 @@ def get_user_info(
 def post_ad(
     input_ad: AdCreate,
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user_id: int = Depends(verify_token)
 ):
-    current_user_id = decode_jwt_token(token)
     saved_ad = ads_repository.save_ad(db=db, ad=input_ad, user_id=current_user_id)
-    
     return {"ad_id": saved_ad.id}
 
 # ------------ TASK6 - GET AD ------
@@ -135,7 +141,7 @@ def get_ad(id: int, db: Session = Depends(get_db)):
     
     current_ad = ads_repository.get_by_id(db=db, ad_id=id)
 
-    if not current_ad:
+    if not current_ad:  
         raise HTTPException(status_code=404, detail="Not found ad")
     
     total_comments = comments_repository.get_all_by_ad_id(db=db, ad_id=current_ad.id)
@@ -146,41 +152,54 @@ def get_ad(id: int, db: Session = Depends(get_db)):
     }
 
 
-# ------------ TASK7 - UPDATE AD ------
+# ------------ TASK7 - UPDATE AD ------ + TASK2
 
 @app.patch("/shanyraks/{id}")
 def patch_update_ad(
-        id: int,
-        ad_update: AdCreate,
-        db: Session = Depends(get_db),
-        token: str = Depends(oauth2_scheme)
+    id: int,
+    ad_update: AdCreate,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(verify_token)
 ):
-    current_user_id = decode_jwt_token(token)
-    found_ad = ads_repository.get_by_id(db=db, ad_id=id)
+    current_ad = ads_repository.get_by_id(db=db, ad_id=id)
 
-    if not found_ad:
+    if not current_ad:
         raise HTTPException(status_code=404, detail="Not found ad")
     
-    ads_repository.update_ad(db=db, ad_id=found_ad.id, new_info=ad_update)
+    current_ad_owner_id = current_ad.user_id
 
+    if current_ad_owner_id != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to delete other users' comments"
+        )
+    
+    ads_repository.update_ad(db=db, ad_id=current_ad.id, new_info=ad_update)
     return Response("Updated - OK", status_code=200)
 
 
-# ------------ TASK8 - DELETE AD ------
+# ------------ TASK8 - DELETE AD ------ +TASK2
 
 @app.delete("/shanyraks/{id}")
 def delete_ad(
     id: int,
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user_id: int = Depends(verify_token)
 ):
-    current_user_id = decode_jwt_token(token)
-    found_ad = ads_repository.get_by_id(db, ad_id=id)
+    current_ad = ads_repository.get_by_id(db, ad_id=id)
 
-    if not found_ad:
+    if not current_ad:
         raise HTTPException(status_code=404, detail="Not found ad")
     
-    deleted_ad = ads_repository.delete_ad(db=db, ad_id=found_ad.id)
+    current_ad_owner_id = current_ad.user_id
+
+    if current_ad_owner_id != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to delete other users' comments"
+        )
+
+    deleted_ad = ads_repository.delete_ad(db=db, ad_id=current_ad.id)
 
     if not deleted_ad:
         raise HTTPException(status_code=400, detail="Deletion did not happen")
@@ -195,16 +214,14 @@ def post_comments(
     id: int,
     new_comment: CommentCreate,
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user_id: int = Depends(verify_token)
 ):
     current_ad = ads_repository.get_by_id(db=db, ad_id=id)
-    current_user_id = decode_jwt_token(token)
 
     if not current_ad:
         raise HTTPException(status_code=404, detail="Not found ad")
 
     comments_repository.save_comment(db=db, comment=new_comment, user_id=current_user_id, ad_id=current_ad.id)
-
     return Response("Comment created - OK", status_code=200)
 
 
@@ -225,7 +242,7 @@ def get_comments(
     return {"comments": all_comment_by_ad_id}
 
 
-# ------------ TASK11 - UPDATE COMMENTS ------
+# ------------ TASK11 - UPDATE COMMENTS ------ +TASK3
 
 @app.patch("/shanyraks/{id}/comments/{comment_id}")
 def patch_update_comments(
@@ -233,36 +250,120 @@ def patch_update_comments(
     comment_id: int,
     new_info: CommentUpdate,
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user_id: int = Depends(verify_token)
 ):
-    current_user_id = decode_jwt_token(token)
     current_ad = ads_repository.get_by_id(db=db, ad_id=id)
     current_comment = comments_repository.get_by_id(db=db, comment_id=comment_id)
 
     if not current_ad or not current_comment:
         raise HTTPException(status_code=404, detail="Not found")
     
-    comments_repository.update_comment(db=db, comment_id=current_comment.id, new_info=new_info)
+    current_ad_owner_id = current_ad.user_id
 
+    if current_ad_owner_id != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to modify other users' comments"
+        )
+    
+    comments_repository.update_comment(db=db, comment_id=current_comment.id, new_info=new_info)
     return Response("Updated - OK", status_code=200)
 
 
-# ------------ TASK12 - DELETE COMMENTS ------
+# ------------ TASK12 - DELETE COMMENTS ------ +TASK3
 
 @app.delete("/shanyraks/{id}/comments/{comment_id}")
 def delete_comment(
     id: int,
     comment_id: int,
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user_id: int = Depends(verify_token)
 ):
-    current_user_id = decode_jwt_token(token)
     current_ad = ads_repository.get_by_id(db=db, ad_id=id)
     current_comment = comments_repository.get_by_id(db=db, comment_id=comment_id)
 
     if not current_ad or not current_comment:
         raise HTTPException(status_code=404, detail="Not found")
     
-    comments_repository.delete_comment(db=db, comment_id=current_comment.id)
+    current_ad_owner_id = current_ad.user_id
 
+    if current_ad_owner_id != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to delete other users' comments"
+        )
+    
+    comments_repository.delete_comment(db=db, comment_id=current_comment.id)
     return Response("Deleted - OK", status_code=200)
+
+
+# ------------ PROJ3 - TASK4 ADD FAV ADS ------
+
+@app.post("/auth/users/favorites/shanyraks/{id}")
+def post_favorite_ads(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(verify_token)
+):
+    current_ad = ads_repository.get_by_id(db=db, ad_id=id)
+    if not current_ad:
+        raise HTTPException(status_code=404, detail="Not found ad")
+    
+    favs_repository.save_ad(db=db, ad_id=current_ad.id, fav_adress=current_ad.adress)
+    return Response("Saved fav ad - OK", status_code=200)
+
+
+# ------------ PROJ3 - TASK5 GET FAV ADS ------
+
+@app.get("/auth/users/favorites/shanyraks")
+def get_favs(
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(verify_token)
+):
+    shanyraks = favs_repository.get_all(db=db)
+    return {"shanyraks": shanyraks}
+
+
+# ------------ PROJ3 - TASK6 DELETE FAV ADS ------
+
+@app.delete("/auth/users/favorites/shanyraks/{id}")
+def delete_fav_ad(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(verify_token)
+):
+    current_fav_ad = favs_repository.get_by_id(db=db, fav_ad_id=id)
+
+    if not current_fav_ad:
+        raise HTTPException(status_code=400, detail="Not found fav ad")
+    
+    favs_repository.delete_ad(db=db, fav_ad_id=current_fav_ad.id)
+    return Response("Deleted fav ad - OK", status_code=200)
+
+
+# ------------ PROJ3 - TASK7 SEARCHING AND PAGINATION ------
+
+@app.get("/shanyraks")
+def get(
+    limit: int,
+    offset: int,
+    type: str = "",
+    rooms_count: int = None,
+    price_from: float = None,
+    price_until: float = None,
+    db: Session = Depends(get_db)
+):
+    total_data, filtered_data = ads_repository.search(
+        db=db,
+        limit=limit,
+        offset=offset,
+        type=type,
+        rooms_count=rooms_count,
+        price_from=price_from,
+        price_until=price_until
+    )
+
+    return {
+            "total": len(total_data),
+            "objects": filtered_data[::-1]
+    }

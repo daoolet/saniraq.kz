@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import or_, and_
 
-from .models import User, Ad, Comment
+from .models import User, Ad, Comment, FavAd
 from .schemas import (
     UserCreate,
     UserUpdate,
@@ -69,6 +70,35 @@ class AdsRepository:
         db.commit()
         return True
     
+    def search(
+            self,
+            db: Session,
+            limit: int,
+            offset: int,
+            type: str,
+            rooms_count: int,
+            price_from: float,
+            price_until: float,
+        ):
+            query = db.query(Ad)
+
+            if type:
+                query = query.filter(Ad.type == type)
+
+            if rooms_count:
+                query = query.filter(Ad.rooms_count == rooms_count)
+
+            if price_from:
+                query = query.filter(Ad.price >= price_from)
+
+            if price_until:
+                query = query.filter(Ad.price <= price_until)
+
+            before_filter_data = query.all()
+            after_filter_data = query.offset(offset).limit(limit).all()
+
+            return before_filter_data, after_filter_data
+    
 class CommentsRepository:
 
     def get_all(self, db: Session, skip: int = 0, limit: int = 10):
@@ -96,5 +126,26 @@ class CommentsRepository:
     def delete_comment(self, db: Session, comment_id: int):
         db_comment = db.query(Comment).filter(Comment.id == comment_id).first()
         db.delete(db_comment)
+        db.commit()
+        return True
+    
+class FavAdsRepository:
+
+    def get_all(self, db: Session, skip: int = 0, limit: int = 10):
+        return db.query(FavAd).offset(skip).limit(limit).all()
+    
+    def get_by_id(self, db: Session, fav_ad_id: int):
+        return db.query(FavAd).filter(FavAd.id == fav_ad_id).first()
+
+    def save_ad(self, db: Session, ad_id: int, fav_adress: str):
+        db_fav_ad = FavAd(ad_id = ad_id, fav_adress = fav_adress)
+        db.add(db_fav_ad)
+        db.commit()
+        db.refresh(db_fav_ad)
+        return db_fav_ad
+    
+    def delete_ad(self, db: Session, fav_ad_id: int):
+        db_fav_ad = db.query(FavAd).filter(FavAd.id == fav_ad_id).first()
+        db.delete(db_fav_ad)
         db.commit()
         return True
